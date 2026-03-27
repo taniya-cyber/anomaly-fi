@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anomaly Fi — User Panel</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0a0e1a;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+            min-height: 100vh;
+        }
+
+        /* ── TOPBAR ── */
+        .topbar {
+            background: #111827;
+            border-bottom: 1px solid #1f3a5f;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .topbar h1 { color: #00a2ff; font-size: 20px; letter-spacing: 2px; }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .topbar-right span { color: #718096; font-size: 14px; }
+        .topbar-right strong { color: #00a2ff; }
+
+        .logout-btn {
+            background: rgba(255,107,107,0.1);
+            border: 1px solid rgba(255,107,107,0.3);
+            color: #ff6b6b;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover { background: rgba(255,107,107,0.2); }
+
+        /* ── CONTENT ── */
+        .content {
+            max-width: 900px;
+            margin: 32px auto;
+            padding: 0 24px;
+        }
+
+        .section-title {
+            font-size: 12px;
+            color: #4a5568;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        /* ── FOLDER ── */
+        .folder-block {
+            background: #111827;
+            border: 1px solid #1f3a5f;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .folder-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .folder-header:hover { background: rgba(0,162,255,0.05); }
+
+        .folder-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .folder-icon { font-size: 18px; }
+
+        .folder-meta {
+            font-size: 12px;
+            color: #4a5568;
+        }
+
+        .folder-arrow {
+            color: #4a5568;
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+
+        .folder-arrow.open { transform: rotate(90deg); }
+
+        /* Confidential folder gets red tint */
+        .folder-block.confidential .folder-header {
+            border-left: 3px solid rgba(255,107,107,0.5);
+        }
+
+        .folder-block.confidential .folder-title { color: #fc8181; }
+
+        /* System folder gets yellow tint */
+        .folder-block.system .folder-header {
+            border-left: 3px solid rgba(246,173,85,0.5);
+        }
+
+        .folder-block.system .folder-title { color: #f6ad55; }
+
+        /* Reports folder gets blue tint */
+        .folder-block.reports .folder-header {
+            border-left: 3px solid rgba(0,162,255,0.5);
+        }
+
+        /* ── FILE LIST ── */
+        .file-list {
+            display: none;
+            border-top: 1px solid #1f3a5f;
+            max-height: 340px;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .file-list.open { display: block; }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            border-bottom: 1px solid #0f1a2a;
+            transition: background 0.15s;
+        }
+
+        .file-item:last-child { border-bottom: none; }
+        .file-item:hover { background: rgba(255,255,255,0.02); }
+
+        .file-item.deleted {
+            opacity: 0.25;
+            pointer-events: none;
+            text-decoration: line-through;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-icon { font-size: 16px; }
+        .file-name { font-size: 13px; color: #cbd5e0; }
+
+        /* ── BUTTONS ── */
+        .file-actions { display: flex; gap: 6px; }
+
+        .btn {
+            padding: 4px 12px;
+            border-radius: 4px;
+            border: 1px solid;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            background: transparent;
+            transition: all 0.15s;
+        }
+
+        .btn-open  { border-color: rgba(0,162,255,0.4); color: #00a2ff; }
+        .btn-open:hover  { background: rgba(0,162,255,0.12); }
+
+        .btn-copy  { border-color: rgba(72,187,120,0.4); color: #48bb78; }
+        .btn-copy:hover  { background: rgba(72,187,120,0.12); }
+
+        .btn-delete { border-color: rgba(255,107,107,0.4); color: #ff6b6b; }
+        .btn-delete:hover { background: rgba(255,107,107,0.12); }
+
+        /* ── POPUP ── */
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .popup-overlay.active { display: flex; }
+
+        .popup-box {
+            background: #111827;
+            border: 1px solid #1f3a5f;
+            border-radius: 12px;
+            padding: 28px;
+            width: 520px;
+            max-width: 90vw;
+        }
+
+        .popup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .popup-title { color: #00a2ff; font-size: 15px; font-weight: 600; }
+
+        .popup-close {
+            background: none;
+            border: none;
+            color: #4a5568;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .popup-close:hover { color: #fff; }
+
+        .popup-content {
+            background: #0a0e1a;
+            border: 1px solid #1a2a3a;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #a0aec0;
+            white-space: pre-line;
+            line-height: 1.8;
+            max-height: 340px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <h1>ANOMALY FI</h1>
+        <div class="topbar-right">
+            <span>Logged in as <strong>{{ username }}</strong></span>
+            <a href="/logout" class="logout-btn">Logout</a>
+        </div>
+    </div>
+
+    <!-- FILE SYSTEM -->
+    <div class="content">
+        <div class="section-title">📁 File System</div>
+
+        {% for folder, files in folders.items() %}
+        <div class="folder-block {% if folder == 'Confidential' %}confidential{% elif folder == 'System' %}system{% else %}reports{% endif %}">
+
+            <!-- Folder Header (clickable to expand) -->
+            <div class="folder-header" onclick="toggleFolder('{{ folder }}')">
+                <div class="folder-title">
+                    <span class="folder-icon">
+                        {% if folder == 'Confidential' %}🔒
+                        {% elif folder == 'System' %}⚙️
+                        {% else %}📁{% endif %}
+                    </span>
+                    {{ folder }}
+                    <span class="folder-meta">{{ files|length }} files</span>
+                </div>
+                <span class="folder-arrow" id="arrow-{{ folder }}">▶</span>
+            </div>
+
+            <!-- File List (hidden by default) -->
+            <div class="file-list" id="folder-{{ folder }}">
+                {% for filename in files %}
+                <div class="file-item" id="file-{{ folder }}-{{ loop.index }}">
+                    <div class="file-info">
+                        <span class="file-icon">
+                            {% if '.pdf' in filename %}📄
+                            {% elif '.xlsx' in filename %}📊
+                            {% elif '.docx' in filename %}📝
+                            {% elif '.txt' in filename %}📃
+                            {% else %}📄{% endif %}
+                        </span>
+                        <span class="file-name">{{ filename }}</span>
+                    </div>
+                    <div class="file-actions">
+                        <button class="btn btn-open"
+                            data-action="open"
+                            data-file="{{ filename }}"
+                            data-id="file-{{ folder }}-{{ loop.index }}">Open</button>
+
+                        <button class="btn btn-copy"
+                            data-action="copy"
+                            data-file="{{ filename }}"
+                            data-id="file-{{ folder }}-{{ loop.index }}">Copy</button>
+
+                        <button class="btn btn-delete"
+                            data-action="delete"
+                            data-file="{{ filename }}"
+                            data-id="file-{{ folder }}-{{ loop.index }}">Delete</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- FILE CONTENT POPUP -->
+    <div class="popup-overlay" id="popupOverlay">
+        <div class="popup-box">
+            <div class="popup-header">
+                <span class="popup-title" id="popupTitle"></span>
+                <button class="popup-close" onclick="closePopup()">✕</button>
+            </div>
+            <div class="popup-content" id="popupContent"></div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const deletedFiles = new Set();
+
+        // ── TOGGLE FOLDER OPEN/CLOSE ─────────────────────────────────────────
+        window.toggleFolder = function(folder) {
+            const list  = document.getElementById('folder-' + folder);
+            const arrow = document.getElementById('arrow-' + folder);
+            list.classList.toggle('open');
+            arrow.classList.toggle('open');
+        }
+
+        // ── FILE ACTION ───────────────────────────────────────────────────────
+        function fileAction(action, filename, elemId) {
+            if (deletedFiles.has(filename)) return;
+
+            fetch('/file_action', {
+                method : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body   : JSON.stringify({ action: action, filename: filename })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) { alert(data.error); return; }
+
+                if (action === 'open' && data.content) {
+                    document.getElementById('popupTitle').textContent  = filename;
+                    document.getElementById('popupContent').textContent = data.content;
+                    document.getElementById('popupOverlay').classList.add('active');
+                }
+
+                if (action === 'delete') {
+                    deletedFiles.add(filename);
+                    const el = document.getElementById(elemId);
+                    if (el) el.classList.add('deleted');
+                }
+            })
+            .catch(err => console.error(err));
+        }
+
+        // ── CLOSE POPUP ───────────────────────────────────────────────────────
+        window.closePopup = function() {
+            document.getElementById('popupOverlay').classList.remove('active');
+        }
+
+        document.getElementById('popupOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closePopup();
+        });
+
+        // ── BUTTON LISTENERS ──────────────────────────────────────────────────
+        document.querySelectorAll(".btn").forEach(btn => {
+            btn.addEventListener("click", function() {
+                fileAction(
+                    this.dataset.action,
+                    this.dataset.file,
+                    this.dataset.id
+                );
+            });
+        });
+
+    });
+    </script>
+
+</body>
+</html>

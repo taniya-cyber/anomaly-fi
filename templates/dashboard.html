@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Anomaly Fi — Admin Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0e1a; font-family: 'Segoe UI', sans-serif; color: #fff; }
+
+        .topbar {
+            background: #111827;
+            border-bottom: 1px solid #1f3a5f;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .topbar h1 { color: #00a2ff; font-size: 20px; letter-spacing: 2px; }
+        .topbar span { color: #718096; font-size: 14px; }
+        .topbar a { color: #ff6b6b; text-decoration: none; font-size: 13px; margin-left: 24px; }
+
+        .content { padding: 32px; }
+
+        .placeholder {
+            background: #111827;
+            border: 1px dashed #1f3a5f;
+            border-radius: 12px;
+            padding: 60px;
+            text-align: center;
+            color: #4a5568;
+        }
+
+        .placeholder h2 { font-size: 18px; margin-bottom: 8px; color: #718096; }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <h1>ANOMALY FI</h1>
+        <div>
+            <span>Logged in as <strong style="color:#00a2ff">{{ username }}</strong> (Admin)</span>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="placeholder">
+            <h2>Admin Dashboard</h2>
+            <p>ITS scores, graphs and alerts will appear here.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anomaly Fi — Login</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0a0e1a;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #fff;
+        }
+
+        .login-box {
+            background: #111827;
+            border: 1px solid #1f3a5f;
+            border-radius: 12px;
+            padding: 48px 40px;
+            width: 380px;
+            box-shadow: 0 0 40px rgba(0, 162, 255, 0.08);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo h1 {
+            font-size: 28px;
+            color: #00a2ff;
+            letter-spacing: 2px;
+        }
+
+        .logo p {
+            font-size: 12px;
+            color: #4a5568;
+            margin-top: 4px;
+            letter-spacing: 1px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #1a2332;
+            border: 1px solid #1f3a5f;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            margin-bottom: 20px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: #00a2ff;
+        }
+
+        button {
+            width: 100%;
+            padding: 13px;
+            background: #00a2ff;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #0088dd;
+        }
+
+        .error {
+            background: rgba(255, 59, 59, 0.1);
+            border: 1px solid rgba(255, 59, 59, 0.3);
+            color: #ff6b6b;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <div class="logo">
+            <h1>ANOMALY FI</h1>
+            <p>INSIDER THREAT DETECTION SYSTEM</p>
+        </div>
+
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST">
+            <label>Username</label>
+            <input type="text" name="username" placeholder="Enter username" required autofocus>
+
+            <label>Password</label>
+            <input type="password" name="password" placeholder="Enter password" required>
+
+            <button type="submit">LOGIN</button>
+        </form>
+    </div>
+</body>
+</html>
