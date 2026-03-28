@@ -12,10 +12,6 @@ THRESHOLD    = 70
 
 # ── STEP 1: TRAIN AND SAVE MODEL ─────────────────────────────────────────────
 def train_model():
-    """
-    Trains Isolation Forest on dataset and saves model.pkl.
-    Only needs to run ONCE. After that, model.pkl is loaded directly.
-    """
     data = pd.read_csv(DATASET_PATH)
 
     # ── FEATURE ENGINEERING ──────────────────────────────────────────────────
@@ -29,7 +25,6 @@ def train_model():
     data['is_idle'] = ((data['activity_rate'] == 0) & 
                        (data['session_duration'] > 60)).astype(int)
 
-    # ── FEATURES USED BY MODEL ───────────────────────────────────────────────
     X = data[['login_time', 'files_accessed', 'files_deleted',
               'files_copied', 'session_duration',
               'copy_rate', 'delete_rate', 'access_rate',
@@ -99,6 +94,20 @@ def get_its_score(login_time, files_accessed, files_deleted,
     raw_score = _model.decision_function(input_data)[0]
     its_score = convert_to_its(raw_score)
 
+    # ── 🔥 HYBRID RULE-BASED BOOST (NEW) ─────────────────────────────────────
+    total_ops = files_accessed + files_deleted + files_copied
+
+    # Fast heavy activity
+    if session_duration <= 2 and total_ops >= 20:
+        its_score += 20
+
+    # High deletion activity
+    if files_deleted >= 10:
+        its_score += 10
+
+    # Clamp score
+    its_score = min(100, its_score)
+
     # ── RISK CLASSIFICATION ──────────────────────────────────────────────────
     if its_score >= THRESHOLD:
         risk = "HIGH"
@@ -128,10 +137,10 @@ if __name__ == "__main__":
     print(f"ITS Score : {score}")
     print(f"Risk Level: {risk}")
 
-    print("\n── Testing IDLE anomaly ──")
+    print("\n── Testing HEAVY DELETE anomaly ──")
     score, risk = get_its_score(
-        login_time=11, files_accessed=0,
-        files_deleted=0, files_copied=0, session_duration=120
+        login_time=16, files_accessed=1,
+        files_deleted=15, files_copied=10, session_duration=1
     )
     print(f"ITS Score : {score}")
     print(f"Risk Level: {risk}")
