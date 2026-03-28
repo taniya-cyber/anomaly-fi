@@ -2,52 +2,973 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anomaly Fi — Admin Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #0a0e1a; font-family: 'Segoe UI', sans-serif; color: #fff; }
+        :root {
+            --bg:        #060b14;
+            --surface:   #0d1424;
+            --border:    #1a2d4a;
+            --accent:    #00c2ff;
+            --accent2:   #00ff9d;
+            --danger:    #ff3b5c;
+            --warn:      #ffaa00;
+            --text:      #c8d8e8;
+            --muted:     #3d5a78;
+            --font-mono: 'Share Tech Mono', monospace;
+            --font-main: 'Exo 2', sans-serif;
+        }
 
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            font-family: var(--font-main);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg, transparent, transparent 2px,
+                rgba(0,194,255,0.012) 2px, rgba(0,194,255,0.012) 4px
+            );
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* ── TOPBAR ── */
         .topbar {
-            background: #111827;
-            border-bottom: 1px solid #1f3a5f;
-            padding: 16px 32px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 32px;
+            height: 64px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 500;
         }
 
-        .topbar h1 { color: #00a2ff; font-size: 20px; letter-spacing: 2px; }
-        .topbar span { color: #718096; font-size: 14px; }
-        .topbar a { color: #ff6b6b; text-decoration: none; font-size: 13px; margin-left: 24px; }
+        .topbar-left { display: flex; align-items: center; gap: 14px; }
 
-        .content { padding: 32px; }
-
-        .placeholder {
-            background: #111827;
-            border: 1px dashed #1f3a5f;
-            border-radius: 12px;
-            padding: 60px;
-            text-align: center;
-            color: #4a5568;
+        .logo-img {
+            height: 40px; width: 40px;
+            object-fit: contain; border-radius: 6px;
         }
 
-        .placeholder h2 { font-size: 18px; margin-bottom: 8px; color: #718096; }
+        .topbar-title {
+            font-family: var(--font-mono);
+            font-size: 18px; color: var(--accent); letter-spacing: 3px;
+        }
+
+        .topbar-title span { color: var(--accent2); }
+
+        .topbar-right { display: flex; align-items: center; gap: 20px; }
+
+        .admin-badge { font-size: 13px; color: var(--muted); }
+        .admin-badge strong { color: var(--accent); }
+
+        .live-dot {
+            display: flex; align-items: center; gap: 6px;
+            font-size: 11px; color: var(--accent2); font-family: var(--font-mono);
+        }
+
+        .live-dot::before {
+            content: ''; width: 7px; height: 7px;
+            background: var(--accent2); border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%,100% { opacity:1; transform:scale(1); }
+            50%      { opacity:0.4; transform:scale(0.8); }
+        }
+
+        .logout-btn {
+            background: rgba(255,59,92,0.1);
+            border: 1px solid rgba(255,59,92,0.3);
+            color: var(--danger); padding: 7px 16px;
+            border-radius: 6px; text-decoration: none;
+            font-size: 12px; font-weight: 600; letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover { background: rgba(255,59,92,0.2); }
+
+        /* ── TABS ── */
+        .tabs {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 32px; display: flex; gap: 4px;
+        }
+
+        .tab {
+            padding: 14px 22px; font-size: 13px; font-weight: 600;
+            color: var(--muted); cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s; display: flex; align-items: center;
+            gap: 8px; letter-spacing: 1px; user-select: none;
+        }
+
+        .tab:hover { color: var(--text); }
+        .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+        /* ── CONTENT ── */
+        .tab-content { display: none; padding: 28px 32px; }
+        .tab-content.active { display: block; }
+
+        /* ── STAT CARDS ── */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px; margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px; padding: 20px 18px;
+            position: relative; overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+        .stat-card:hover { border-color: var(--accent); }
+
+        .stat-card::before {
+            content: ''; position: absolute;
+            top: 0; left: 0; right: 0; height: 2px;
+        }
+
+        .stat-card.blue::before   { background: var(--accent); }
+        .stat-card.green::before  { background: var(--accent2); }
+        .stat-card.red::before    { background: var(--danger); }
+        .stat-card.warn::before   { background: var(--warn); }
+        .stat-card.purple::before { background: #a855f7; }
+
+        .stat-label {
+            font-size: 10px; color: var(--muted);
+            letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-family: var(--font-mono);
+            font-size: 30px; color: #fff; line-height: 1;
+        }
+
+        .stat-icon {
+            position: absolute; bottom: 12px; right: 14px;
+            font-size: 22px; opacity: 0.15;
+        }
+
+        /* ── CHART SECTION ── */
+        .chart-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px; margin-bottom: 24px;
+        }
+
+        .chart-header {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 13px; color: var(--muted);
+            letter-spacing: 2px; text-transform: uppercase;
+        }
+
+        .chart-toggle { display: flex; gap: 8px; }
+
+        .toggle-btn {
+            padding: 6px 14px; border-radius: 5px;
+            border: 1px solid var(--border); background: transparent;
+            color: var(--muted); font-size: 11px; cursor: pointer;
+            font-family: var(--font-main); font-weight: 600;
+            letter-spacing: 1px; transition: all 0.2s;
+        }
+
+        .toggle-btn.active {
+            border-color: var(--accent); color: var(--accent);
+            background: rgba(0,194,255,0.08);
+        }
+
+        /* ── KEY FIX: single canvas container, toggled by visibility ── */
+        .chart-container {
+            position: relative; height: 300px;
+        }
+
+        .chart-container canvas {
+            position: absolute; top: 0; left: 0;
+            width: 100% !important; height: 100% !important;
+        }
+
+        /* ── USER TABLE ── */
+        .section-title {
+            font-size: 11px; color: var(--muted);
+            letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px;
+        }
+
+        .user-table {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px; overflow: hidden;
+        }
+
+        .table-header {
+            display: grid;
+            grid-template-columns: 2fr 1.5fr 1fr 1.5fr 1fr;
+            padding: 12px 20px;
+            background: rgba(0,194,255,0.04);
+            border-bottom: 1px solid var(--border);
+            font-size: 10px; color: var(--muted);
+            letter-spacing: 2px; text-transform: uppercase;
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 2fr 1.5fr 1fr 1.5fr 1fr;
+            padding: 14px 20px;
+            border-bottom: 1px solid rgba(26,45,74,0.5);
+            cursor: pointer; transition: background 0.15s; align-items: center;
+        }
+
+        .table-row:last-child { border-bottom: none; }
+        .table-row:hover { background: rgba(0,194,255,0.04); }
+
+        .user-name {
+            display: flex; align-items: center; gap: 10px;
+            font-weight: 600; font-size: 14px;
+        }
+
+        .user-avatar {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: var(--border); display: flex;
+            align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 700;
+            color: var(--accent); font-family: var(--font-mono);
+        }
+
+        .risk-badge {
+            display: inline-block; padding: 3px 10px;
+            border-radius: 4px; font-size: 10px;
+            font-weight: 700; letter-spacing: 1px;
+        }
+
+        .risk-HIGH   { background:rgba(255,59,92,0.15);  color:var(--danger); border:1px solid rgba(255,59,92,0.3); }
+        .risk-MEDIUM { background:rgba(255,170,0,0.15);  color:var(--warn);   border:1px solid rgba(255,170,0,0.3); }
+        .risk-LOW    { background:rgba(0,255,157,0.1);   color:var(--accent2);border:1px solid rgba(0,255,157,0.3); }
+
+        .score-bar-wrap { display: flex; align-items: center; gap: 8px; }
+
+        .score-bar {
+            flex: 1; height: 5px; background: var(--border);
+            border-radius: 2px; overflow: hidden;
+        }
+
+        .score-bar-fill {
+            height: 100%; border-radius: 2px; transition: width 0.5s ease;
+        }
+
+        .score-num {
+            font-family: var(--font-mono); font-size: 12px;
+            color: var(--text); min-width: 36px;
+        }
+
+        /* ── USER DETAIL PANEL ── */
+        .detail-panel {
+            display: none; background: var(--surface);
+            border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; margin-top: 16px;
+        }
+
+        .detail-panel.active { display: block; }
+
+        .detail-header {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 20px;
+        }
+
+        .detail-title {
+            font-size: 15px; font-weight: 700;
+            color: var(--accent); font-family: var(--font-mono);
+        }
+
+        .close-detail {
+            background: none; border: none;
+            color: var(--muted); font-size: 18px; cursor: pointer;
+        }
+
+        .close-detail:hover { color: #fff; }
+
+        .detail-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+        }
+
+        /* File activity stats grid */
+        .file-stats-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 12px; margin-bottom: 16px;
+        }
+
+        .file-stat-box {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 8px; padding: 14px; text-align: center;
+        }
+
+        .file-stat-box .val {
+            font-family: var(--font-mono); font-size: 26px; font-weight: 700;
+        }
+
+        .file-stat-box .lbl {
+            font-size: 10px; color: var(--muted);
+            letter-spacing: 1px; text-transform: uppercase; margin-top: 4px;
+        }
+
+        /* ── ALERTS ── */
+        .alert-card {
+            background: var(--surface);
+            border: 1px solid rgba(255,59,92,0.25);
+            border-left: 3px solid var(--danger);
+            border-radius: 10px; padding: 18px 20px;
+            margin-bottom: 12px; cursor: pointer; transition: all 0.2s;
+        }
+
+        .alert-card:hover { background: rgba(255,59,92,0.05); }
+
+        .alert-top {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 8px;
+        }
+
+        .alert-user {
+            font-weight: 700; font-size: 15px;
+            color: var(--danger); font-family: var(--font-mono);
+        }
+
+        .alert-time { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+        .alert-score { font-family: var(--font-mono); font-size: 28px; color: var(--danger); }
+
+        .alert-details { display: flex; gap: 20px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+        .alert-details span { color: var(--text); }
+
+        /* ── ANALYTICS ── */
+        .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+        .analytics-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px;
+        }
+
+        /* ── EMPTY STATE ── */
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+        .empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
+        .empty-state p { font-size: 14px; }
     </style>
 </head>
 <body>
+
+    <!-- TOPBAR -->
     <div class="topbar">
-        <h1>ANOMALY FI</h1>
-        <div>
-            <span>Logged in as <strong style="color:#00a2ff">{{ username }}</strong> (Admin)</span>
-            <a href="/logout">Logout</a>
+        <div class="topbar-left">
+            <img src="/static/Anomaly Fi Logo.png" class="logo-img" alt="AF"
+                 onerror="this.style.display='none'">
+            <div class="topbar-title">ANOMALY<span>FI</span></div>
+        </div>
+        <div class="topbar-right">
+            <div class="live-dot">LIVE MONITORING</div>
+            <span class="admin-badge">Admin: <strong>{{ username }}</strong></span>
+            <a href="/logout" class="logout-btn">LOGOUT</a>
         </div>
     </div>
 
-    <div class="content">
-        <div class="placeholder">
-            <h2>Admin Dashboard</h2>
-            <p>ITS scores, graphs and alerts will appear here.</p>
+    <!-- TABS -->
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('overview')">🛡 OVERVIEW</div>
+        <div class="tab" onclick="switchTab('users')">👤 USERS</div>
+        <div class="tab" onclick="switchTab('alerts')">
+            🚨 ALERTS
+            <span id="alertCount" style="background:var(--danger);color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;display:none;margin-left:4px">0</span>
+        </div>
+        <div class="tab" onclick="switchTab('analytics')">📊 ANALYTICS</div>
+    </div>
+
+    <!-- ══════════════════════════════ TAB 1: OVERVIEW ══════════════════════════════ -->
+    <div class="tab-content active" id="tab-overview">
+
+        <div class="stat-grid">
+            <div class="stat-card blue">
+                <div class="stat-label">Total Users</div>
+                <div class="stat-value" id="statTotal">—</div>
+                <div class="stat-icon">👥</div>
+            </div>
+            <div class="stat-card red">
+                <div class="stat-label">High Risk</div>
+                <div class="stat-value" id="statHigh">—</div>
+                <div class="stat-icon">⚠️</div>
+            </div>
+            <div class="stat-card warn">
+                <div class="stat-label">Alerts</div>
+                <div class="stat-value" id="statAlerts">—</div>
+                <div class="stat-icon">🚨</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-label">Avg ITS Score</div>
+                <div class="stat-value" id="statAvg">—</div>
+                <div class="stat-icon">📈</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="stat-label">Blocked</div>
+                <div class="stat-value" id="statBlocked">—</div>
+                <div class="stat-icon">🔒</div>
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <div class="chart-header">
+                <div class="chart-title">ITS Score Trend — All Users (Per Session)</div>
+                <div class="chart-toggle">
+                    <button class="toggle-btn active" id="btnLine" onclick="showLine()">📈 Line</button>
+                    <button class="toggle-btn"        id="btnPie"  onclick="showPie()">🥧 Pie</button>
+                </div>
+            </div>
+
+            <!-- FIXED: single container, two canvases, show/hide with display -->
+            <div class="chart-container" id="lineContainer">
+                <canvas id="lineChart"></canvas>
+            </div>
+            <div class="chart-container" id="pieContainer" style="display:none">
+                <canvas id="pieChart"></canvas>
+            </div>
+
+            <div style="margin-top:14px;font-size:11px;color:var(--muted);font-family:var(--font-mono)">
+                ── Each point = one login session &nbsp;|&nbsp; Red dashed line = risk threshold (70) ──
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ══════════════════════════════ TAB 2: USERS ══════════════════════════════ -->
+    <div class="tab-content" id="tab-users">
+
+        <div class="section-title">Monitored Users</div>
+
+        <div class="user-table">
+            <div class="table-header">
+                <div>User</div>
+                <div>ITS Score</div>
+                <div>Risk</div>
+                <div>Last Session</div>
+                <div>Status</div>
+            </div>
+            <div id="userTableBody">
+                <div class="empty-state">
+                    <div class="emoji">📭</div>
+                    <p>No session data yet. Users need to log in and out first.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Detail Panel -->
+        <div class="detail-panel" id="userDetailPanel">
+            <div class="detail-header">
+                <div class="detail-title" id="detailUsername">—</div>
+                <button class="close-detail" onclick="closeDetail()">✕</button>
+            </div>
+
+            <!-- File activity counts -->
+            <div class="file-stats-grid">
+                <div class="file-stat-box">
+                    <div class="val" style="color:var(--accent)" id="detailAccessed">0</div>
+                    <div class="lbl">Files Opened</div>
+                </div>
+                <div class="file-stat-box">
+                    <div class="val" style="color:var(--accent2)" id="detailCopied">0</div>
+                    <div class="lbl">Files Copied</div>
+                </div>
+                <div class="file-stat-box">
+                    <div class="val" style="color:var(--danger)" id="detailDeleted">0</div>
+                    <div class="lbl">Files Deleted</div>
+                </div>
+            </div>
+
+            <div class="detail-grid">
+                <div class="chart-section" style="margin:0">
+                    <div class="chart-title" style="margin-bottom:14px">ITS Score History (Per Session)</div>
+                    <div style="position:relative;height:220px">
+                        <canvas id="userChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-section" style="margin:0">
+                    <div class="chart-title" style="margin-bottom:14px">Session Summary</div>
+                    <div id="userStats" style="font-size:13px;color:var(--text);line-height:2.4;font-family:var(--font-mono)"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ══════════════════════════════ TAB 3: ALERTS ══════════════════════════════ -->
+    <div class="tab-content" id="tab-alerts">
+        <div class="section-title">High Risk & Blocked Users</div>
+        <div id="alertsList">
+            <div class="empty-state">
+                <div class="emoji">✅</div>
+                <p>No alerts. System is normal.</p>
+            </div>
         </div>
     </div>
+
+    <!-- ══════════════════════════════ TAB 4: ANALYTICS ══════════════════════════════ -->
+    <div class="tab-content" id="tab-analytics">
+        <div class="analytics-grid">
+            <div class="analytics-card">
+                <div class="chart-title" style="margin-bottom:16px">Risk Distribution</div>
+                <div style="position:relative;height:220px">
+                    <canvas id="analyticsRiskChart"></canvas>
+                </div>
+            </div>
+            <div class="analytics-card">
+                <div class="chart-title" style="margin-bottom:16px">System Overview</div>
+                <div id="analyticsStats" style="font-size:13px;line-height:2.6;font-family:var(--font-mono);color:var(--text)"></div>
+            </div>
+            <div class="analytics-card" style="grid-column:1/-1">
+                <div class="chart-title" style="margin-bottom:16px">Session Activity by Hour</div>
+                <div style="position:relative;height:200px">
+                    <canvas id="analyticsHourChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ── STATE ──────────────────────────────────────────────────────────────────
+    let allUsers     = [];
+    let scoreHistory = {};
+    let lineInst     = null;
+    let pieInst      = null;
+    let userInst     = null;
+    let riskInst     = null;
+    let hourInst     = null;
+
+    Chart.defaults.color       = '#3d5a78';
+    Chart.defaults.borderColor = '#1a2d4a';
+    Chart.defaults.font.family = "'Share Tech Mono', monospace";
+
+    const COLORS = ['#00c2ff','#00ff9d','#ffaa00','#ff3b5c','#a855f7','#f97316'];
+
+    // ── TAB SWITCH ─────────────────────────────────────────────────────────────
+    function switchTab(name) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        document.getElementById('tab-' + name).classList.add('active');
+        if (name === 'analytics') renderAnalytics();
+    }
+
+    // ── CHART TOGGLE — FIXED ───────────────────────────────────────────────────
+    // Instead of destroying canvases, just show/hide the containers
+    function showLine() {
+        document.getElementById('lineContainer').style.display = 'block';
+        document.getElementById('pieContainer').style.display  = 'none';
+        document.getElementById('btnLine').classList.add('active');
+        document.getElementById('btnPie').classList.remove('active');
+    }
+
+    function showPie() {
+        document.getElementById('lineContainer').style.display = 'none';
+        document.getElementById('pieContainer').style.display  = 'block';
+        document.getElementById('btnLine').classList.remove('active');
+        document.getElementById('btnPie').classList.add('active');
+        // Only render pie if not already rendered
+        if (!pieInst) renderPieChart();
+    }
+
+    // ── FETCH ──────────────────────────────────────────────────────────────────
+    async function fetchData() {
+        try {
+            const [uRes, hRes] = await Promise.all([
+                fetch('/api/its_scores'),
+                fetch('/api/score_history')
+            ]);
+
+            // If session expired, don't crash — just skip this refresh
+            if (uRes.status === 403 || uRes.status === 401) return;
+            if (hRes.status === 403 || hRes.status === 401) return;
+
+            const newUsers   = await uRes.json();
+            const newHistory = await hRes.json();
+
+            // If response is error object, skip
+            if (!Array.isArray(newUsers)) return;
+
+            const changed = JSON.stringify(newUsers) !== JSON.stringify(allUsers)
+                         || JSON.stringify(newHistory) !== JSON.stringify(scoreHistory);
+
+            allUsers     = newUsers;
+            scoreHistory = newHistory || {};
+
+            if (changed) {
+                updateStatCards();
+                renderLineChart();
+                if (pieInst) { pieInst.destroy(); pieInst = null; }
+                renderUserTable();
+                renderAlerts();
+                updateAlertBadge();
+            }
+        } catch(e) { console.error('Fetch error:', e); }
+    }
+
+    // ── STAT CARDS ─────────────────────────────────────────────────────────────
+    function updateStatCards() {
+        const total   = allUsers.length;
+        const high    = allUsers.filter(u => u.risk === 'HIGH').length;
+        const blocked = allUsers.filter(u => u.is_blocked === 1).length;
+        const avg     = total > 0
+            ? (allUsers.reduce((s,u) => s + u.score, 0) / total).toFixed(1) : '0.0';
+
+        document.getElementById('statTotal').textContent   = total;
+        document.getElementById('statHigh').textContent    = high;
+        document.getElementById('statAlerts').textContent  = high;
+        document.getElementById('statAvg').textContent     = avg;
+        document.getElementById('statBlocked').textContent = blocked;
+    }
+
+    // ── LINE CHART — DAY-WISE FIXED ────────────────────────────────────────────
+    function renderLineChart() {
+        if (Object.keys(scoreHistory).length === 0) return;
+
+        let maxDay = 1;
+        Object.values(scoreHistory).forEach(arr =>
+            arr.forEach(p => { if (p.day > maxDay) maxDay = p.day; })
+        );
+
+        // Clear day labels: Day 1, Day 2 ...
+        const labels = Array.from({length: maxDay}, (_, i) => 'Session ' + (i + 1));
+
+        const datasets = Object.entries(scoreHistory).map(([user, points], i) => {
+            // Build array with null for missing days — ensures correct positioning
+            const data = Array(maxDay).fill(null);
+            points.forEach(p => { data[p.day - 1] = p.score; });
+
+            return {
+                label           : user,
+                data,
+                borderColor     : COLORS[i % COLORS.length],
+                backgroundColor : COLORS[i % COLORS.length] + '22',
+                tension         : 0.35,
+                pointRadius     : 6,
+                pointHoverRadius: 9,
+                spanGaps        : true,   // connects across null gaps
+                fill            : false,
+            };
+        });
+
+        if (lineInst) lineInst.destroy();
+
+        lineInst = new Chart(document.getElementById('lineChart'), {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                responsive           : true,
+                maintainAspectRatio  : false,
+                interaction          : { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels  : { boxWidth: 10, padding: 20, color: '#3d5a78' }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) + ' ITS' : 'No session'}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        min  : 0,
+                        max  : 100,
+                        title: { display: true, text: 'ITS Score (0–100)', color: '#3d5a78' },
+                        grid : { color: '#1a2d4a' },
+                        ticks: { color: '#3d5a78', stepSize: 20 }
+                    },
+                    x: {
+                        title: { display: true, text: 'Sessions', color: '#3d5a78' },
+                        grid : { color: '#1a2d4a' },
+                        ticks: { color: '#3d5a78' }
+                    }
+                }
+            },
+            plugins: [{
+                // Red threshold line at 70
+                id: 'threshold',
+                afterDraw(chart) {
+                    const { ctx, chartArea, scales } = chart;
+                    const y = scales.y.getPixelForValue(70);
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(chartArea.left, y);
+                    ctx.lineTo(chartArea.right, y);
+                    ctx.strokeStyle = 'rgba(255,59,92,0.6)';
+                    ctx.lineWidth   = 1.5;
+                    ctx.setLineDash([6, 4]);
+                    ctx.stroke();
+                    ctx.fillStyle = 'rgba(255,59,92,0.8)';
+                    ctx.font      = '10px Share Tech Mono';
+                    ctx.fillText('RISK THRESHOLD — 70', chartArea.right - 160, y - 6);
+                    ctx.restore();
+                }
+            }]
+        });
+    }
+
+    // ── PIE CHART ──────────────────────────────────────────────────────────────
+    function renderPieChart() {
+        const low    = allUsers.filter(u => u.risk === 'LOW').length;
+        const medium = allUsers.filter(u => u.risk === 'MEDIUM').length;
+        const high   = allUsers.filter(u => u.risk === 'HIGH').length;
+
+        if (pieInst) pieInst.destroy();
+
+        pieInst = new Chart(document.getElementById('pieChart'), {
+            type: 'doughnut',
+            data: {
+                labels  : ['Low Risk', 'Medium Risk', 'High Risk'],
+                datasets: [{
+                    data           : [low, medium, high],
+                    backgroundColor: ['rgba(0,255,157,0.7)','rgba(255,170,0,0.7)','rgba(255,59,92,0.7)'],
+                    borderColor    : ['#00ff9d','#ffaa00','#ff3b5c'],
+                    borderWidth    : 1,
+                }]
+            },
+            options: {
+                responsive          : true,
+                maintainAspectRatio : false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { padding: 20, boxWidth: 12 } }
+                }
+            }
+        });
+    }
+
+    // ── USER TABLE ─────────────────────────────────────────────────────────────
+    function renderUserTable() {
+        const body = document.getElementById('userTableBody');
+        if (allUsers.length === 0) {
+            body.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><p>No session data yet.</p></div>`;
+            return;
+        }
+
+        body.innerHTML = allUsers.map(u => {
+            const color   = u.risk==='HIGH' ? '#ff3b5c' : u.risk==='MEDIUM' ? '#ffaa00' : '#00ff9d';
+            const initial = u.username[0].toUpperCase();
+            const status  = u.is_blocked ? '🔒 BLOCKED' : '✅ ACTIVE';
+            const scolor  = u.is_blocked ? 'var(--danger)' : 'var(--accent2)';
+            const time    = u.updated ? u.updated.split(' ')[1] : '—';
+
+            return `
+            <div class="table-row" onclick="showUserDetail('${u.username}')">
+                <div class="user-name">
+                    <div class="user-avatar">${initial}</div>
+                    ${u.username}
+                </div>
+                <div class="score-bar-wrap">
+                    <div class="score-bar">
+                        <div class="score-bar-fill" style="width:${u.score}%;background:${color}"></div>
+                    </div>
+                    <div class="score-num">${u.score.toFixed(1)}</div>
+                </div>
+                <div><span class="risk-badge risk-${u.risk}">${u.risk}</span></div>
+                <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">${time}</div>
+                <div style="font-size:12px;color:${scolor};font-weight:600">${status}</div>
+            </div>`;
+        }).join('');
+    }
+
+    // ── USER DETAIL — WITH FILE ACTIVITY ──────────────────────────────────────
+    async function showUserDetail(username) {
+        const user    = allUsers.find(u => u.username === username);
+        const history = scoreHistory[username] || [];
+
+        document.getElementById('detailUsername').textContent = '▸ ' + username.toUpperCase();
+        document.getElementById('userDetailPanel').classList.add('active');
+
+        // Fetch file activity for this user
+        try {
+            const res      = await fetch('/api/user_activity/' + username);
+            const activity = await res.json();
+
+            document.getElementById('detailAccessed').textContent = activity.total_accessed || 0;
+            document.getElementById('detailCopied').textContent   = activity.total_copied   || 0;
+            document.getElementById('detailDeleted').textContent  = activity.total_deleted  || 0;
+
+            document.getElementById('userStats').innerHTML = `
+                ITS Score   : <span style="color:var(--accent)">${user.score.toFixed(1)}</span><br>
+                Risk Level  : <span class="risk-badge risk-${user.risk}">${user.risk}</span><br>
+                Status      : ${user.is_blocked
+                    ? '<span style="color:var(--danger)">🔒 BLOCKED</span>'
+                    : '<span style="color:var(--accent2)">✅ ACTIVE</span>'}<br>
+                Sessions    : <span style="color:var(--accent)">${activity.session_count}</span><br>
+                Files Open  : <span style="color:var(--accent)">${activity.total_accessed}</span><br>
+                Files Copy  : <span style="color:var(--accent2)">${activity.total_copied}</span><br>
+                Files Del   : <span style="color:var(--danger)">${activity.total_deleted}</span><br>
+                Last Seen   : <span style="color:var(--text)">${user.updated || '—'}</span>
+            `;
+        } catch(e) {
+            document.getElementById('userStats').textContent = 'Could not load activity.';
+        }
+
+        // Per-user day-wise chart
+        const labels = history.map(p => 'Session ' + p.day);
+        const data   = history.map(p => p.score);
+
+        if (userInst) userInst.destroy();
+
+        userInst = new Chart(document.getElementById('userChart'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label          : username,
+                    data,
+                    borderColor    : '#00c2ff',
+                    backgroundColor: 'rgba(0,194,255,0.1)',
+                    tension        : 0.4,
+                    pointRadius    : 6,
+                    fill           : true,
+                }]
+            },
+            options: {
+                responsive          : true,
+                maintainAspectRatio : false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { min:0, max:100, grid:{color:'#1a2d4a'}, ticks:{color:'#3d5a78'} },
+                    x: { grid:{color:'#1a2d4a'}, ticks:{color:'#3d5a78'} }
+                }
+            }
+        });
+
+        document.getElementById('userDetailPanel').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function closeDetail() {
+        document.getElementById('userDetailPanel').classList.remove('active');
+        if (userInst) { userInst.destroy(); userInst = null; }
+    }
+
+    // ── ALERTS ─────────────────────────────────────────────────────────────────
+    function renderAlerts() {
+        const high = allUsers.filter(u => u.risk === 'HIGH' || u.is_blocked);
+        const list = document.getElementById('alertsList');
+
+        if (high.length === 0) {
+            list.innerHTML = `<div class="empty-state"><div class="emoji">✅</div><p>No alerts. System is normal.</p></div>`;
+            return;
+        }
+
+        list.innerHTML = high.map(u => `
+            <div class="alert-card" onclick="switchTab('users'); setTimeout(()=>showUserDetail('${u.username}'),100)">
+                <div class="alert-top">
+                    <div class="alert-user">⚠ ${u.username.toUpperCase()}</div>
+                    <div class="alert-time">${u.updated || ''}</div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div class="alert-details">
+                        Status: <span>${u.is_blocked ? '🔒 BLOCKED' : '🔴 HIGH RISK'}</span>
+                        &nbsp;|&nbsp; Risk: <span>${u.risk}</span>
+                    </div>
+                    <div class="alert-score">${u.score.toFixed(1)}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function updateAlertBadge() {
+        const count = allUsers.filter(u => u.risk === 'HIGH').length;
+        const badge = document.getElementById('alertCount');
+        badge.textContent    = count;
+        badge.style.display  = count > 0 ? 'inline' : 'none';
+    }
+
+    // ── ANALYTICS ──────────────────────────────────────────────────────────────
+    async function renderAnalytics() {
+        const low    = allUsers.filter(u => u.risk === 'LOW').length;
+        const medium = allUsers.filter(u => u.risk === 'MEDIUM').length;
+        const high   = allUsers.filter(u => u.risk === 'HIGH').length;
+        const total  = allUsers.length;
+        const avg    = total > 0 ? (allUsers.reduce((s,u) => s+u.score,0)/total).toFixed(1) : '0.0';
+        const maxU   = allUsers.reduce((a,b) => a.score > b.score ? a : b, {username:'—',score:0});
+
+        if (riskInst) riskInst.destroy();
+        riskInst = new Chart(document.getElementById('analyticsRiskChart'), {
+            type: 'bar',
+            data: {
+                labels  : ['LOW RISK', 'MEDIUM RISK', 'HIGH RISK'],
+                datasets: [{
+                    data           : [low, medium, high],
+                    backgroundColor: ['rgba(0,255,157,0.6)','rgba(255,170,0,0.6)','rgba(255,59,92,0.6)'],
+                    borderColor    : ['#00ff9d','#ffaa00','#ff3b5c'],
+                    borderWidth    : 1, borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero:true, ticks:{stepSize:1,color:'#3d5a78'}, grid:{color:'#1a2d4a'} },
+                    x: { ticks:{color:'#3d5a78'}, grid:{color:'#1a2d4a'} }
+                }
+            }
+        });
+
+        document.getElementById('analyticsStats').innerHTML = `
+            Total Monitored : <span style="color:var(--accent)">${total}</span><br>
+            Avg ITS Score   : <span style="color:var(--accent)">${avg}</span><br>
+            High Risk Count : <span style="color:var(--danger)">${high}</span><br>
+            Blocked Users   : <span style="color:var(--danger)">${allUsers.filter(u=>u.is_blocked).length}</span><br>
+            Highest Threat  : <span style="color:var(--warn)">${maxU.username} (${maxU.score?.toFixed(1)})</span><br>
+            Safe Users      : <span style="color:var(--accent2)">${low}</span>
+        `;
+
+        // Hour activity chart — fetch real login hours from DB
+        const hourRes    = await fetch('/api/login_hours');
+        const hourCounts = await hourRes.json();
+
+        if (hourInst) hourInst.destroy();
+        hourInst = new Chart(document.getElementById('analyticsHourChart'), {
+            type: 'bar',
+            data: {
+                labels  : Array.from({length:24}, (_,i) => i + ':00'),
+                datasets: [{
+                    label          : 'Sessions',
+                    data           : hourCounts,
+                    backgroundColor: 'rgba(0,194,255,0.4)',
+                    borderColor    : '#00c2ff',
+                    borderWidth    : 1, borderRadius: 3,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero:true, ticks:{stepSize:1,color:'#3d5a78'}, grid:{color:'#1a2d4a'} },
+                    x: { ticks:{color:'#3d5a78', maxRotation:45}, grid:{color:'#1a2d4a'} }
+                }
+            }
+        });
+    }
+
+    // ── AUTO REFRESH EVERY 10 SECONDS ──────────────────────────────────────────
+    fetchData();
+    setInterval(fetchData, 10000);
+    </script>
+
 </body>
 </html>

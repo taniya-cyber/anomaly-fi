@@ -21,6 +21,7 @@ def login():
 
         if user:
             # user row = (id, username, password, role, is_blocked)
+            session.permanent  = True   # keep session for 24 hours
             session["username"] = user[1]
             session["role"]     = user[3]
 
@@ -168,6 +169,10 @@ def api_its_scores():
     conn   = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
+    # Get all users with role=user
+    cursor.execute("SELECT username, is_blocked FROM users WHERE role='user'")
+    all_users = cursor.fetchall()
+
     # Get latest score per user
     cursor.execute("""
         SELECT username, score, updated
@@ -175,17 +180,20 @@ def api_its_scores():
         WHERE id IN (
             SELECT MAX(id) FROM its_scores GROUP BY username
         )
-        ORDER BY score DESC
     """)
-    rows = cursor.fetchall()
-
-    # Get blocked status
-    cursor.execute("SELECT username, is_blocked FROM users WHERE role='user'")
-    blocked_map = {row[0]: row[1] for row in cursor.fetchall()}
+    score_rows = cursor.fetchall()
     conn.close()
 
+    score_map = {row[0]: (row[1], row[2]) for row in score_rows}
+
     users = []
-    for username, score, updated in rows:
+    for username, is_blocked in all_users:
+        if username in score_map:
+            score, updated = score_map[username]
+        else:
+            # User exists but no session yet — show with 0 score
+            score, updated = 0.0, "No sessions yet"
+
         if score >= 70:
             risk = "HIGH"
         elif score >= 40:
@@ -193,14 +201,19 @@ def api_its_scores():
         else:
             risk = "LOW"
 
+        # Blocked users always show as HIGH regardless of score
+        if is_blocked:
+            risk = "HIGH"
+
         users.append({
             "username"  : username,
             "score"     : score,
             "risk"      : risk,
             "updated"   : updated,
-            "is_blocked": blocked_map.get(username, 0)
+            "is_blocked": is_blocked
         })
 
+    users.sort(key=lambda u: u["score"], reverse=True)
     return jsonify(users)
 
 
@@ -224,29 +237,83 @@ def api_score_history():
     rows = cursor.fetchall()
     conn.close()
 
-    # Convert timestamps to day numbers
-    from datetime import datetime
-    dates_seen = []
-    result     = {}
+    # Build score history per user
+    # Each session = one point, numbered sequentially per user
+    result = {}
+    user_session_count = {}
 
     for username, score, updated in rows:
-        # Extract date only from timestamp
-        date_str = updated.split(" ")[0]   # "2026-03-26 15:00:00" → "2026-03-26"
-
-        if date_str not in dates_seen:
-            dates_seen.append(date_str)
-
-        day_number = dates_seen.index(date_str) + 1   # Day 1, Day 2...
-
         if username not in result:
             result[username] = []
+            user_session_count[username] = 0
+
+        user_session_count[username] += 1
+        session_num = user_session_count[username]
 
         result[username].append({
-            "day"  : day_number,
-            "score": score
+            "day"      : session_num,   # Session 1, 2, 3... per user
+            "score"    : score,
+            "timestamp": updated
         })
 
     return jsonify(result)
+
+
+
+
+# ── ROUTE 9: Per-user activity details ──────────────────────────────────────
+@app.route("/api/user_activity/<username>")
+def api_user_activity(username):
+    if session.get("role") != "admin":
+        return jsonify({"error": "Unauthorized"}), 403
+
+    conn   = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT login_time, files_accessed, files_deleted,
+               files_copied, session_duration, is_anomalous, timestamp
+        FROM activity_logs
+        WHERE username = ?
+        ORDER BY timestamp ASC
+    """, (username,))
+    rows = cursor.fetchall()
+    conn.close()
+
+    total_accessed = sum(r[1] for r in rows)
+    total_deleted  = sum(r[2] for r in rows)
+    total_copied   = sum(r[3] for r in rows)
+
+    return jsonify({
+        "sessions"      : len(rows),
+        "total_accessed": total_accessed,
+        "total_deleted" : total_deleted,
+        "total_copied"  : total_copied,
+        "session_count" : len(rows)
+    })
+
+
+
+
+# ── ROUTE 10: Login hour activity for analytics chart ────────────────────────
+@app.route("/api/login_hours")
+def api_login_hours():
+    if session.get("role") != "admin":
+        return jsonify({"error": "Unauthorized"}), 403
+
+    conn   = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT login_time FROM activity_logs")
+    rows = cursor.fetchall()
+    conn.close()
+
+    # Count sessions per hour (0-23)
+    hour_counts = [0] * 24
+    for row in rows:
+        hour = row[0]
+        if hour is not None and 0 <= hour <= 23:
+            hour_counts[hour] += 1
+
+    return jsonify(hour_counts)
 
 
 # ── RUN ──────────────────────────────────────────────────────────────────────

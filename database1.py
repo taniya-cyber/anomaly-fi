@@ -30,7 +30,6 @@ def initialize_db():
     """)
 
     # ── TABLE 2: activity_logs ───────────────────────────────────────────────
-    # Columns match the dataset exactly so ML model can use live data directly
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS activity_logs (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,6 +62,9 @@ def initialize_db():
         ("aman",    hash_password("aman123"),    "user"),
         ("ramita",  hash_password("ramita123"),  "user"),
         ("sucheta", hash_password("sucheta123"), "user"),
+        ("arjun",   hash_password("arjun123"),   "user"),
+        ("priya",   hash_password("priya123"),   "user"),
+        ("vikram",  hash_password("vikram123"),  "user"),
     ]
 
     for username, password, role in seed_users:
@@ -72,7 +74,7 @@ def initialize_db():
                 (username, password, role)
             )
         except sqlite3.IntegrityError:
-            pass
+            pass    # already exists, skip
 
     conn.commit()
     conn.close()
@@ -154,8 +156,11 @@ def block_user(username):
 # ── RUN TO INITIALIZE ────────────────────────────────────────────────────────
 if __name__ == "__main__":
     initialize_db()
-    print("\nDefault accounts:")
+    print("\nAll accounts:")
     print("  admin   / admin123")
     print("  aman    / aman123")
     print("  ramita  / ramita123")
     print("  sucheta / sucheta123")
+    print("  arjun   / arjun123")
+    print("  priya   / priya123")
+    print("  vikram  / vikram123")
